@@ -1,0 +1,122 @@
+---
+title: "Research pipeline"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    theme: yeti
+    navbar: 
+      - { icon: "fas fa-table", href: "https://docs.google.com/spreadsheets/d/1yPaSMb_0Qr3AxFzOIwVMrosDGpt8t7pzeLBGA7ncvWM/edit#gid=0", align: right}
+runtime: shiny
+---
+
+```{r eval=FALSE, include=FALSE}
+# https://github.com/lhehnke/project-killR
+```
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(googlesheets4)
+library(flexdashboard)
+library(plotly)
+library(pluralize)
+
+sheets_auth(path = ".secrets/ath-projects-da65d73c80f5.json")
+```
+
+```{r global, include=FALSE}
+sheet_id <- "1yPaSMb_0Qr3AxFzOIwVMrosDGpt8t7pzeLBGA7ncvWM"
+
+# pipeline_meta <- sheets_get(sheet_id)
+
+score_lookup <- read_sheet(sheet_id, sheet = "Status/score lookup") %>% 
+  mutate(Status_plot = str_replace_all(Status, "; ", ";\n"),
+         Status_plot = str_replace_all(Status_plot, "Presented at ", "Presented at\n"),
+         Status_plot = str_replace_all(Status_plot, "review post", "review\npost")) %>% 
+  mutate(points = map_chr(Score, ~pluralize("point", n = .)),
+         Status_plot = paste0(Status_plot, "\n(", Score, " ", points, ")"))
+```
+
+```{r get-pipeline-data, message=FALSE, include=FALSE}
+load_pipeline_data <- function() {
+  read_sheet(sheet_id, sheet = "Data")
+}
+
+pipeline <- load_pipeline_data()
+```
+
+
+## Row
+
+### Current projects {.value-box}
+
+```{r}
+num_projects <- nrow(pipeline)
+
+renderValueBox({
+  valueBox(num_projects, icon = "fas fa-tasks", color = "#FFDC00")
+})
+```
+
+### Total points {.value-box}
+
+```{r}
+total_points <- sum(pipeline$Score)
+
+renderValueBox({
+  valueBox(total_points, icon = "fas fa-chart-bar", color = "#FF851B") 
+})
+```
+
+### Average points {.value-box}
+
+```{r}
+avg_points <- mean(pipeline$Score) %>% round(2)
+
+renderValueBox({
+  valueBox(avg_points, icon = "fas fa-thermometer-half", color = "#7FDBFF") 
+})
+```
+
+### Standard deviation of points {.value-box}
+
+```{r}
+sd_points <- sd(pipeline$Score) %>% round(2)
+
+renderValueBox({
+  valueBox(sd_points, icon = "fas fa-heartbeat", color = "#7FDBFF")
+})
+```
+
+## Row
+
+###
+
+```{r warning=FALSE}
+pipeline_tiles <- pipeline %>% 
+  mutate(score_cat = factor(Score, 
+                            levels = c(7, 6, 5, 4, 3.5, 3, 2, 1, 0),
+                            labels = score_lookup$Status_plot)) %>% 
+  mutate(x = as.numeric(score_cat)) %>% 
+  group_by(score_cat) %>% 
+  mutate(y = 1:n()) %>% 
+  ungroup()
+
+plot_pipeline <- ggplot(pipeline_tiles) +
+  geom_rect(aes(xmin = x + 0.05, xmax = x + 0.95, 
+                ymin = y + 0.025, ymax = y + 0.975,
+                text = Paper), fill = "#0074D9") +
+  scale_x_continuous(breaks = seq(1.5, 10.5, 1), 
+                     labels = c(score_lookup$Status_plot, "asdf"),
+                     expand = c(0, 0)) +
+  scale_y_continuous(breaks = seq(1, 25, 5)) +
+  labs(x = NULL, y = NULL) +
+  theme_minimal(base_size = 14, base_family = "Open Sans") +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.text.y = element_blank(),
+        axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+
+renderPlotly({
+  ggplotly(plot_pipeline, tooltip = "text")
+})
+```
