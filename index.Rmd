@@ -5,7 +5,7 @@ output:
     orientation: rows
     theme: yeti
     navbar: 
-      - { icon: "fas fa-table", href: "https://docs.google.com/spreadsheets/d/1yPaSMb_0Qr3AxFzOIwVMrosDGpt8t7pzeLBGA7ncvWM/edit#gid=0", align: right}
+      - { icon: "fas fa-database", href: "https://airtable.com/tblXj4OTLat3kWEAE", align: right}
 runtime: shiny
 ---
 
@@ -19,6 +19,8 @@ library(airtabler)
 library(flexdashboard)
 library(plotly)
 library(pluralize)
+
+source(".secrets/airtable-api.R")
 ```
 
 ```{r global, include=FALSE}
