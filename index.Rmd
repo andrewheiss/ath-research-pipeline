@@ -36,7 +36,8 @@ load_data <- function() {
     mutate(point_text = map_chr(Score, ~pluralize("point", n = .)),
            Status_plot = paste0(Status_plot, "\n(", Score, " ", point_text, ")")) %>% 
     select(-createdTime, -point_text) %>% 
-    rename(score_id = id)
+    rename(score_id = id) %>% 
+    arrange(desc(Score))
   
   pipeline <- pipeline_base$Papers$select_all(fields = list("Paper", "Status")) %>% 
     mutate(Status = unlist(Status)) %>% 
