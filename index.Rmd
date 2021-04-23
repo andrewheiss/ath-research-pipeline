@@ -19,12 +19,13 @@ library(airtabler)
 library(flexdashboard)
 library(plotly)
 library(pluralize)
+library(lubridate)
 
 source(".secrets/airtable-api.R")
 ```
 
 ```{r global, include=FALSE}
-pipeline_base <- airtable("appw9GaXRQ9sCEUtT", c("Papers", "Scores"))
+pipeline_base <- airtable("appw9GaXRQ9sCEUtT", c("Papers", "Scores", "Submissions"))
 ```
 
 ```{r get-pipeline-data, message=FALSE, include=FALSE}
@@ -39,10 +40,12 @@ load_data <- function() {
     rename(score_id = id) %>% 
     arrange(desc(Score))
   
-  pipeline <- pipeline_base$Papers$select_all(fields = list("Paper", "Status")) %>% 
+  pipeline <- pipeline_base$Papers$select_all(fields = list("Paper", "Status", "Most recent date")) %>% 
+    mutate(`Most recent date` = ymd(`Most recent date`)) %>% 
     mutate(Status = unlist(Status)) %>% 
-    select(paper_id = id, Paper, score_id = Status) %>% 
-    left_join(scores, by = "score_id")
+    rename(paper_id = id, score_id = Status) %>% 
+    left_join(scores, by = "score_id") %>% 
+    filter(!(`Most recent date` < ymd("2019-06-01") & Status == "Accepted"))
   
   return(list(scores = scores, pipeline = pipeline))
 }
